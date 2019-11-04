@@ -9,21 +9,18 @@ from pyspark.sql import SparkSession
 from pyspark import SparkContext
 from pyspark.mllib.linalg.distributed import RowMatrix, CoordinateMatrix
 import timeit
-from .utils import create_spark_session, prepare_data, RMSE_distribution
+from .utils import create_spark_session, prepare_data, RMSE_distribution, top_k_precision_distribution
 
 SIMILARITY_FILE_SORTED = 'similarity_matrix_sorted.parquet'
 
 class neighbor_based_recommender():
     
-    # def __init__(self, train_data_file, test_data_file):
-        # self.train_data_file = train_data_file
-        # self.test_data_file = test_data_file
     def __init__(self, sample_size):
         spark = create_spark_session()
         self.train_data, self.test_data = prepare_data(spark, sample_size)
         self.sample_size = sample_size
     
-    def train(self, neighbor_size = 5, recalculate = False):
+    def fit(self, neighbor_size = 5, recalculate = False):
         start = timeit.default_timer()
         if recalculate:
             self.calculate_similarity()
@@ -32,14 +29,6 @@ class neighbor_based_recommender():
         self.runtime = stop - start
         
     def calculate_similarity(self):
-        # spark = (SparkSession
-        #      .builder
-        #      .master('local')
-        #      .appName('Movie Recommendations')
-        #      .config('spark.executor.memory', '8g')
-        #      .config('spark.driver.memory', '8g')
-        #      .getOrCreate())
-        # train = spark.read.parquet(self.train_data_file)
         train = self.train_data
         train_user_mean = train.groupBy("userId").agg(F.mean('rating'))
         train_user_mean = train_user_mean.withColumnRenamed("avg(rating)", "user_mean")
@@ -66,7 +55,6 @@ class neighbor_based_recommender():
                 activation_matrix[user-1][user_neighbors[user_neighbors['row_number']==neighbor+1]['j'].values[0]-1] \
                                           = user_neighbors[user_neighbors['row_number']==neighbor+1]['value'].values[0]
         
-        # train_data = pd.read_parquet(self.train_data_file)
         train_data = self.train_data.toPandas()
         self.movie_dict = {val:idx for idx,val in enumerate(sorted(train_data['movieId'].unique().tolist()))}
         distinct_user, max_user = train_data['userId'].unique().tolist(), train_data['userId'].max()
@@ -91,30 +79,18 @@ class neighbor_based_recommender():
         
     def RMSE(self):
         
-        # test_data = pd.read_parquet(self.test_data_file)
         test_data = self.test_data.toPandas()
         test_data['predictedRating'] = test_data.apply(lambda x: self.rating_prediction(x['userId'],x['movieId']), axis=1)
         test_data['squared_error'] = test_data.apply(lambda x: (x['rating'] - x['predictedRating'])**2 if x['predictedRating'] is not None else 0, axis=1)
         RMSE_total = (float(test_data['squared_error'].sum())/test_data[~pd.isna(test_data['predictedRating'])].shape[0])**0.5
-        # test_data_user_sum = test_data.groupby(by='userId', as_index=False).sum()
-        # test_data_user_count = test_data.groupby(by='userId', as_index=False).count()
-        # test_data_user = pd.merge(test_data_user_sum,test_data_user_count,on='userId')[['userId','squared_error_x','squared_error_y']]
-        # test_data_user['RMSE_user'] = test_data_user.apply(lambda x: (x['squared_error_x']/x['squared_error_y'])**0.5, axis=1)
-        # test_data_user = test_data_user[['userId','RMSE_user']]
         test_data_user = RMSE_distribution(test_data, 'userId')
-        # test_data_movie_sum = test_data.groupby(by='movieId', as_index=False).sum()
-        # test_data_movie_count = test_data.groupby(by='movieId', as_index=False).count()
-        # test_data_movie = pd.merge(test_data_movie_sum,test_data_movie_count,on='movieId')[['movieId','squared_error_x','squared_error_y']]
-        # test_data_movie['RMSE_user'] = test_data_movie.apply(lambda x: (x['squared_error_x']/x['squared_error_y'])**0.5, axis=1)
-        # test_data_movie = test_data_movie[['movieId','RMSE_user']]
         test_data_movie = RMSE_distribution(test_data, 'movieId')
         return RMSE_total, test_data_user, test_data_movie
     
     def top_k_precision(self, k = 5):
-        # test_data = pd.read_parquet(self.test_data_file)
         test_data = self.test_data.toPandas()
         sorted_test_data = test_data.sort_values(['userId','rating'], ascending=[True,False])
-        precision = []
+        ranking_list = []
         for user in test_data['userId'].unique().tolist():
             movie_to_check_cnt = np.min([k, test_data[test_data['userId']==user].shape[0]])
             movie_to_check = test_data[test_data['userId']==user]['movieId'].tolist()
@@ -122,6 +98,7 @@ class neighbor_based_recommender():
             movie_to_check_prediction = [(_,self.rating_prediction(user,_)) for _ in movie_to_check]
             movie_to_check_prediction_sorted = sorted(movie_to_check_prediction, key = lambda x:x[1], reverse = True)
             user_top_pick_prediction, _ = zip(*movie_to_check_prediction_sorted[:movie_to_check_cnt])
-            precision.append([user, len(list(set(user_top_pick) & set(user_top_pick_prediction)))/float(k)])
-            _, precision_number = zip(*precision)
-        return sum(precision_number)/len(precision_number),precision
+            ranking_list.append([user, user_top_pick, user_top_pick_prediction])
+        ranking_df = pd.DataFrame(ranking_list, columns =['userId','userRanking', 'predictedRanking']) 
+        precision_by_user = top_k_precision_distribution(ranking_df, k)
+        return precision_by_user.mean(),precision_by_user

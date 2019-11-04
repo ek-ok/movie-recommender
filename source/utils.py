@@ -72,5 +72,8 @@ def RMSE_distribution(input_df, group_by = 'userId'):
     input_df_agg_count = input_df.groupby(by=group_by, as_index=False).count()
     input_df_agg = pd.merge(input_df_agg_sum,input_df_agg_count,on=group_by)[[group_by,'squared_error_x','squared_error_y']]
     input_df_agg['RMSE_agg'] = input_df_agg.apply(lambda x: (x['squared_error_x']/x['squared_error_y'])**0.5, axis=1)
-    input_df_agg = input_df_agg[['RMSE_agg']]
-    return input_df_agg
+    return input_df_agg['RMSE_agg']
+    
+def top_k_precision_distribution(input_df, k):
+    input_df['precision'] = input_df.apply(lambda x: len(list(set(x['userRanking']) & set(x['predictedRanking'])))/float(k), axis=1)
+    return input_df['precision']
