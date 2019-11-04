@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, substring
-
+import pandas as pd
 
 def create_spark_session():
     """Create spark session"""
@@ -65,3 +65,12 @@ def prepare_data(spark, sample_size):
     test = test.join(train.select('movieId'), ['movieId'], how='left_semi')
 
     return train, test
+    
+def RMSE_distribution(input_df, group_by = 'userId'):
+    input_df['squared_error'] = input_df.apply(lambda x: (x['rating'] - x['predictedRating'])**2 if x['predictedRating'] is not None else 0, axis=1)
+    input_df_agg_sum = input_df.groupby(by=group_by, as_index=False).sum()
+    input_df_agg_count = input_df.groupby(by=group_by, as_index=False).count()
+    input_df_agg = pd.merge(input_df_agg_sum,input_df_agg_count,on=group_by)[[group_by,'squared_error_x','squared_error_y']]
+    input_df_agg['RMSE_agg'] = input_df_agg.apply(lambda x: (x['squared_error_x']/x['squared_error_y'])**0.5, axis=1)
+    input_df_agg = input_df_agg[['RMSE_agg']]
+    return input_df_agg
