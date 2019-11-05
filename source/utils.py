@@ -87,6 +87,11 @@ def rmse_distribution(input_df, group_by='userId'):
 
 
 def top_k_precision_distribution(input_df, k):
+    pred_cols = ['userRanking', 'predictedRanking']
+    input_df[pred_cols] = input_df.apply(
+        lambda x: pd.Series([x[pred_cols[0]][:k],
+                             x[pred_cols[1]][:k]]), axis=1)
+
     input_df['precision'] = input_df.apply(lambda x: len(list(
                             set(x['userRanking']) &
                             set(x['predictedRanking'])))/float(k), axis=1)

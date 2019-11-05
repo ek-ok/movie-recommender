@@ -96,7 +96,7 @@ class NeighborBasedRecommender():
             return self.result[int(user_id)-1][self.movie_dict[int(movie_id)]]
         return None
 
-    def RMSE(self):
+    def rmse(self):
 
         test_data = self.test_data.toPandas()
         test_data['predictedRating'] = test_data.apply(
@@ -104,11 +104,11 @@ class NeighborBasedRecommender():
         test_data['squared_error'] = test_data.apply(
             lambda x: (x['rating'] - x['predictedRating'])**2
             if x['predictedRating'] is not None else 0, axis=1)
-        RMSE_total = (float(test_data['squared_error'].sum()) /
+        rmse_total = (float(test_data['squared_error'].sum()) /
                       test_data[~pd.isna(test_data['predictedRating'])].shape[0])**0.5
         test_data_user = rmse_distribution(test_data, 'userId')
         test_data_movie = rmse_distribution(test_data, 'movieId')
-        return RMSE_total, test_data_user, test_data_movie
+        return rmse_total, test_data_user, test_data_movie
 
     def top_k_precision(self, k=5):
         test_data = self.test_data.toPandas()
