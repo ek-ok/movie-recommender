@@ -94,6 +94,14 @@ def top_k_precision_distribution(input_df, k):
     return input_df['precision']
 
 
+def calculate_coverage(input_df):
+    unique_movie_cnt = len(input_df['movieId'].unique().tolist())
+    recommended_movie = [list(_) for _ in input_df['predictedRanking'].tolist()]
+    movie_recommended_flatted = set([item for sublist in recommended_movie for item in sublist])
+    unique_recommended_movie_cnt = len(movie_recommended_flatted)
+    return float(unique_recommended_movie_cnt) / unique_movie_cnt
+
+
 def plot_lines(title, x, y, gp_cols=None):
     """
     Output a line chart

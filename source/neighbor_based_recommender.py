@@ -6,7 +6,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
 from .utils import (rmse_distribution, create_spark_session, prepare_data,
-                    top_k_precision_distribution)
+                    top_k_precision_distribution, calculate_coverage)
 
 SIMILARITY_FILE_SORTED = 'similarity_matrix_sorted.parquet'
 
@@ -133,3 +133,14 @@ class NeighborBasedRecommender():
                                   columns=['userId', 'userRanking', 'predictedRanking'])
         precision_by_user = top_k_precision_distribution(ranking_df, k)
         return precision_by_user.mean(), precision_by_user
+
+    def coverage(self, df='test', k=5):
+        if df == 'test':
+            test_data = self.test_data.toPandas()
+        else:
+            test_data = self.train_data.toPandas()
+        test_data['predictedRanking'] = test_data.apply(
+            lambda x: self.recommend_movie(int(x['userId']),
+                                           result_cnt=k),
+            axis=1)
+        return calculate_coverage(test_data)
