@@ -69,7 +69,7 @@ def prepare_data(spark, sample_size):
     return train, test
 
 
-def RMSE_distribution(input_df, group_by='userId'):
+def rmse_distribution(input_df, group_by='userId'):
     input_df['squared_error'] = input_df.apply(lambda x: (x['rating'] -
                                                x['predictedRating'])**2
                                                if x['predictedRating'] is not
