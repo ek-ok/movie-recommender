@@ -2,9 +2,9 @@
 
 ### Overview
 This project is to build 3 different recommendation engines.
-- Baseline: this is our baseline to compare all the other recommendations against. It just takes mean ratings and recommends the most popular movies to everyone
-- Neighbor base: this uses cosine similarity internally to recommend movies
-- ALS: this uses Spark ALS implementation to recommend movies
+- **Baseline**: this is our baseline to compare all the other recommendations against. It just takes mean ratings and recommends the most popular movies to everyone
+- **Neighbor base**: this uses cosine similarity internally to recommend movies
+- **ALS**: this uses Spark ALS implementation to recommend movies
 
 
 ### Structure
