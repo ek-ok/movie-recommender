@@ -3,11 +3,13 @@ from pyspark.sql.functions import col, count, substring
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 def create_spark_session():
     """Create spark session"""
     spark = (SparkSession.builder
                          .master('local')
                          .appName('Movie Recommendations')
+                         .config('spark.driver.host', 'localhost')
                          .config('spark.executor.memory', '8g')
                          .config('spark.driver.memory', '8g')
                          .getOrCreate())
@@ -68,7 +70,31 @@ def prepare_data(spark, sample_size):
     return train, test
 
 
-def plotLines(title, x, y, gp_cols=None):
+def rmse_distribution(input_df, group_by='userId'):
+    input_df['squared_error'] = input_df.apply(lambda x: (x['rating'] -
+                                               x['predictedRating'])**2
+                                               if x['predictedRating'] is not
+                                               None else 0,
+                                               axis=1)
+    input_df_agg_sum = input_df.groupby(by=group_by, as_index=False).sum()
+    input_df_agg_count = input_df.groupby(by=group_by, as_index=False).count()
+    input_df_agg = pd.merge(input_df_agg_sum, input_df_agg_count, on=group_by)[
+                   [group_by, 'squared_error_x', 'squared_error_y']]
+    input_df_agg['RMSE_agg'] = input_df_agg.apply(lambda x:
+                                                  (x['squared_error_x'] /
+                                                   x['squared_error_y'])**0.5,
+                                                  axis=1)
+    return input_df_agg['RMSE_agg']
+
+
+def top_k_precision_distribution(input_df, k):
+    input_df['precision'] = input_df.apply(lambda x: len(list(
+                            set(x['userRanking']) &
+                            set(x['predictedRanking'])))/float(k), axis=1)
+    return input_df['precision']
+
+
+def plot_lines(title, x, y, gp_cols=None):
     """
     Output a line chart
 
@@ -94,7 +120,7 @@ def plotLines(title, x, y, gp_cols=None):
     ax.show()
 
     
-def plotDistribution(title, metric, nTile=10):
+def plot_distribution(title, metric, nTile=10):
     """
     Output the distribution of the valuation metric
 
@@ -104,8 +130,8 @@ def plotDistribution(title, metric, nTile=10):
     :return : pyplot chart of the valuation metric per nTile of data
     """
 
-    metricTileLabel = pd.Series(pd.qcut(metric, nTile, labels=False))
-    metricTileLabel.name = 'NTile'
-    df = pd.concat([metricTileLabel, metric], axis=1).reset_index()
+    metric_tile_label = pd.Series(pd.qcut(metric, nTile, labels=False))
+    metric_tile_label.name = 'NTile'
+    df = pd.concat([metric_tile_label, metric], axis=1).reset_index()
     df_grouped = df.groupby('NTile').mean().reset_index()
-    plotLines(title, metricTileLabel, df_grouped.columns([1]))
+    plot_lines(title, metric_tile_label, df_grouped.columns([1]))
