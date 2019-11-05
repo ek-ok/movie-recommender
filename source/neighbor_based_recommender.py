@@ -1,5 +1,4 @@
 import timeit
-
 import numpy as np
 import pandas as pd
 from pyspark.mllib.linalg.distributed import CoordinateMatrix
@@ -96,9 +95,11 @@ class NeighborBasedRecommender():
             return self.result[int(user_id)-1][self.movie_dict[int(movie_id)]]
         return None
 
-    def rmse(self):
-
-        test_data = self.test_data.toPandas()
+    def rmse(self, df='test'):
+        if df == 'test':
+            test_data = self.test_data.toPandas()
+        else:
+            test_data = self.train_data.toPandas()
         test_data['predictedRating'] = test_data.apply(
             lambda x: self.rating_prediction(x['userId'], x['movieId']), axis=1)
         test_data['squared_error'] = test_data.apply(
@@ -110,8 +111,11 @@ class NeighborBasedRecommender():
         test_data_movie = rmse_distribution(test_data, 'movieId')
         return rmse_total, test_data_user, test_data_movie
 
-    def top_k_precision(self, k=5):
-        test_data = self.test_data.toPandas()
+    def top_k_precision(self, df='test', k=5):
+        if df == 'test':
+            test_data = self.test_data.toPandas()
+        else:
+            test_data = self.train_data.toPandas()
         sorted_test_data = test_data.sort_values(['userId', 'rating'],
                                                  ascending=[True, False])
         ranking_list = []
