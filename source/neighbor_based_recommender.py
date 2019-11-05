@@ -95,17 +95,11 @@ class NeighborBasedRecommender():
             return self.result[int(user_id)-1][self.movie_dict[int(movie_id)]]
         return None
 
-<<<<<<< HEAD
-    def RMSE(self, df='test'):
+    def rmse(self, df='test'):
         if df == 'test':
             test_data = self.test_data.toPandas()
         else:
             test_data = self.train_data.toPandas()
-=======
-    def rmse(self):
-
-        test_data = self.test_data.toPandas()
->>>>>>> 0374d4e2fc9b5a3f130e2d67f88e02277eaf4aa5
         test_data['predictedRating'] = test_data.apply(
             lambda x: self.rating_prediction(x['userId'], x['movieId']), axis=1)
         test_data['squared_error'] = test_data.apply(
