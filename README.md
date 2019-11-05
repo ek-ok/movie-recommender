@@ -11,6 +11,8 @@ This project is to build 3 different recommendation engines.
 This project is broken down to a few components. Final results are summarized in `final_recommendation_results.ipynb`.
 All the training was performed in `model_recommendation.ipynb` using algorithms in `source/model_recommender.py` files.
 Data is stored in `data` dir and results are generated in `data/results` dir.
+
+```bash
 .
 ├── README.md
 ├── als_recommendation.ipynb
@@ -45,6 +47,7 @@ Data is stored in `data` dir and results are generated in `data/results` dir.
     ├── baseline_recommender.py
     ├── neighbor_based_recommender.py
     └── utils.py
+```
 
 ### Setup
 Install Spark version 2.4.4 and then set up conda env with `conda env create -f environment.yml`
