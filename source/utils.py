@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, substring
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def create_spark_session():
@@ -87,12 +88,50 @@ def rmse_distribution(input_df, group_by='userId'):
 
 
 def top_k_precision_distribution(input_df, k):
-    pred_cols = ['userRanking', 'predictedRanking']
-    input_df[pred_cols] = input_df.apply(
-        lambda x: pd.Series([x[pred_cols[0]][:k],
-                             x[pred_cols[1]][:k]]), axis=1)
-
     input_df['precision'] = input_df.apply(lambda x: len(list(
                             set(x['userRanking']) &
                             set(x['predictedRanking'])))/float(k), axis=1)
     return input_df['precision']
+
+
+def plot_lines(title, x, y, gp_cols=None):
+    """
+    Output a line chart
+
+    :param x: pandas Series of independant variable
+    :param y: pandas Series of dependant variable
+    :param gp_cols: pandas DataFrame of optional grouping category
+    :return : pyplot line chart
+    """
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    if gp_cols:
+        df = pd.concat([x, y, gp_cols], axis=1).reset_index()
+        for _, subset in df.groupby(gp_cols):
+            label = str(subset[gp_cols].iloc[0].to_dict())
+            (subset.plot(kind='line', x=x, y=y, label=label, ax=ax)
+                   .set(xlabel=x.name, ylabel=y.name))
+    else:
+        ax.plot(x, y)
+
+    ax.title(title)
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.show()
+
+
+def plot_distribution(title, metric, nTile=10):
+    """
+    Output the distribution of the valuation metric
+
+    :param title: chart title
+    :param metric: pandas Series containing associated valuation metric per ID
+    :param nTile: int, number of buckets to split data
+    :return : pyplot chart of the valuation metric per nTile of data
+    """
+
+    metric_tile_label = pd.Series(pd.qcut(metric, nTile, labels=False))
+    metric_tile_label.name = 'NTile'
+    df = pd.concat([metric_tile_label, metric], axis=1).reset_index()
+    df_grouped = df.groupby('NTile').mean().reset_index()
+    plot_lines(title, metric_tile_label, df_grouped.columns([1]))
