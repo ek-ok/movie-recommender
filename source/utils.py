@@ -7,6 +7,7 @@ def create_spark_session():
     spark = (SparkSession.builder
                          .master('local')
                          .appName('Movie Recommendations')
+                         .config('spark.driver.host', 'localhost')
                          .config('spark.executor.memory', '8g')
                          .config('spark.driver.memory', '8g')
                          .getOrCreate())
