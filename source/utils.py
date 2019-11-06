@@ -136,7 +136,7 @@ def plot_lines(x, y, title, x_lab, y_lab, legend_lab=None):
         ax.legend(legend_lab, loc='center left', bbox_to_anchor=(1, 0.5))
 
 
-def plot_distribution(title, metric, nTile=10):
+def create_quantile_bucket(metric, nTile=10):
     """
     Output the distribution of the valuation metric
 
@@ -146,8 +146,8 @@ def plot_distribution(title, metric, nTile=10):
     :return : pyplot chart of the valuation metric per nTile of data
     """
 
-    metric_quantile = pd.Series(pd.qcut(metric, nTile, labels=False))
+    metric_quantile = pd.Series(pd.qcut(metric.rank(method='first'), nTile, labels=False))
     metric_quantile.name = 'Quantile'
     df = pd.concat([metric_quantile, metric], axis=1).reset_index()
     df_grouped = df.groupby('Quantile').mean().reset_index()
-    plot_lines(title, 'Quantile', metric.columns, metric_quantile, metric)
+    return df_grouped.iloc[:,2]
