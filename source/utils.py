@@ -1,7 +1,9 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, substring
 import pandas as pd
+from numpy import arange
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 
 
 def create_spark_session():
@@ -102,7 +104,7 @@ def calculate_coverage(input_df):
     return float(unique_recommended_movie_cnt) / unique_movie_cnt
 
 
-def plot_lines(title, x, y, gp_cols=None):
+def plot_lines(x, y, title, x_lab, y_lab, legend_lab=None):
     """
     Output a line chart
 
@@ -114,21 +116,27 @@ def plot_lines(title, x, y, gp_cols=None):
 
     fig, ax = plt.subplots(figsize=(6, 6))
 
-    if gp_cols:
-        df = pd.concat([x, y, gp_cols], axis=1).reset_index()
-        for _, subset in df.groupby(gp_cols):
-            label = str(subset[gp_cols].iloc[0].to_dict())
-            (subset.plot(kind='line', x=x, y=y, label=label, ax=ax)
-                   .set(xlabel=x.name, ylabel=y.name))
-    else:
-        ax.plot(x, y)
+   # if gp_cols:
+   #     df = pd.concat([x, y, gp_cols], axis=1).reset_index()
+   #     for _, subset in df.groupby(gp_cols):
+   #         label = str(subset[gp_cols].iloc[0].to_dict())
+   #         (subset.plot(kind='line', x=x, y=y, label=label, ax=ax)
+   #                .set(xlabel=x.name, ylabel=y.name))
+   # else:
+        
+    ax.plot(x, y)
+    step_size = (max(x)-min(x))/(len(x)-1)
+    ax.set_xticks(arange(min(x), max(x)+step_size, step_size))
+    ax.set_title(title)
+    ax.set_xlabel(x_lab)
+    ax.set_ylabel(y_lab)
+    if step_size < 1:
+        ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    if legend_lab:
+        ax.legend(legend_lab, loc='center left', bbox_to_anchor=(1, 0.5))
 
-    ax.title(title)
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax.show()
 
-
-def plot_distribution(title, metric, nTile=10):
+def create_quantile_bucket(metric, nTile=10):
     """
     Output the distribution of the valuation metric
 
@@ -138,8 +146,8 @@ def plot_distribution(title, metric, nTile=10):
     :return : pyplot chart of the valuation metric per nTile of data
     """
 
-    metric_tile_label = pd.Series(pd.qcut(metric, nTile, labels=False))
-    metric_tile_label.name = 'NTile'
-    df = pd.concat([metric_tile_label, metric], axis=1).reset_index()
-    df_grouped = df.groupby('NTile').mean().reset_index()
-    plot_lines(title, metric_tile_label, df_grouped.columns([1]))
+    metric_quantile = pd.Series(pd.qcut(metric.rank(method='first'), nTile, labels=False))
+    metric_quantile.name = 'Quantile'
+    df = pd.concat([metric_quantile, metric], axis=1).reset_index()
+    df_grouped = df.groupby('Quantile').mean().reset_index()
+    return df_grouped.iloc[:,2]
